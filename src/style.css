@@ -1,0 +1,71 @@
+/* ====== GLOBAL ====== */
+html, body, #app { height: 100%; }
+body { background: #fff; }
+
+/* Grid değişkenleri */
+:root{
+  --left: 260px;   /* sol panel genişken */
+  --mid: 300px;    /* orta panel sabit */
+  --ray: 48px;     /* sol ray dar iken */
+}
+
+/* ====== UYGULAMA GRIDİ ====== */
+.layout{
+  height: 100vh;
+  display: grid;
+  grid-template-columns: var(--left) var(--mid) 1fr;
+  min-height: 0;
+  transition: grid-template-columns .18s ease;
+  background:#fff;
+}
+.layout.collapsed{ --left: var(--ray); }
+.layout.collapsed .aside-top{ justify-content: center; }
+.layout.collapsed .aside-body{ display: none; }
+
+/* ====== SOL PANEL ====== */
+.note-item{ border-radius: .5rem; }
+.note-item.is-active{
+  background:#fff;
+  border:1px solid #e9ecef;
+  box-shadow: 0 2px 10px rgba(0,0,0,.04);
+}
+.note-item .label{ font-size: .95rem; }
+.color-bar{ display:inline-block; width:6px; height:16px; border-radius:2px; }
+.caret{ width:14px; text-align:center; }
+.nb-icon{
+  width:20px; height:20px; background:#115ea3;
+  position:relative; display:inline-block; border-radius:3px;
+}
+.nb-icon::after{
+  content:''; position:absolute; left:3px; top:8px;
+  width:10px; height:2px; background:#fff; border-radius:1px;
+}
+
+/* ====== ORTA PANEL ====== */
+.pages-header{ height:48px; position: sticky; top:0; z-index:1; background:#fff; }
+.page-item.active{ background:#f3f6ff; }
+
+/* ====== SAĞ PANEL / EDİTÖR ====== */
+.editor-canvas{ position:relative; padding-bottom:64px; }
+.rule{ width:260px; height:1px; background:#cfcfcf; }
+.note-block{ position:absolute; }
+.block-handle{
+  height:18px; line-height:18px;
+  cursor:grab; user-select:none;
+  text-align:center; letter-spacing:3px;
+  background:#f8f9fa;
+}
+.resize-handle{
+  position:absolute; right:0; bottom:0; width:16px; height:16px;
+  cursor:nwse-resize;
+  background: linear-gradient(135deg, transparent 50%, #bbb 50%);
+}
+
+/* Hover */
+.page-item:hover{ background:#f8f9ff; }
+
+/* Kaydırma (opsiyonel) */
+*::-webkit-scrollbar{ width:10px; height:10px; }
+*::-webkit-scrollbar-thumb{ background:#d0d4da; border-radius:8px; }
+*::-webkit-scrollbar-thumb:hover{ background:#bfc4cb; }
+*::-webkit-scrollbar-track{ background:transparent; }
