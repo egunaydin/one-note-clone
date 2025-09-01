@@ -32,13 +32,28 @@
           :class="{ 'is-active': note.id === selectedNoteId }"
           role="button"
           @click="$emit('select-note', note.id)"
-          @dblclick="$emit('rename-note', note.id)"
+          @dblclick.stop="startRename(note)"
           @contextmenu.prevent="openContextMenu($event, note)"
         >
           <span class="color-bar" :style="{ background: note.color }"></span>
-          <span class="text-truncate label" :class="note.id===selectedNoteId ? 'fw-semibold' : ''">
-            {{ note.name }}
-          </span>
+
+          <!-- İsim: normal görünüm / inline rename -->
+          <template v-if="rename.id === note.id">
+            <input
+              ref="renameInput"
+              v-model.trim="rename.name"
+              class="form-control form-control-sm inline-rename"
+              @click.stop
+              @keydown.enter.prevent="commitRename()"
+              @keydown.esc.prevent="cancelRename()"
+              @blur="commitRename()"
+            />
+          </template>
+          <template v-else>
+            <span class="text-truncate label" :class="note.id===selectedNoteId ? 'fw-semibold' : ''">
+              {{ note.name || 'Adsız bölüm' }}
+            </span>
+          </template>
         </li>
 
         <!-- En son notun altına Yeni Bölüm -->
@@ -69,7 +84,7 @@
       class="context-menu bg-white border rounded shadow-sm position-absolute"
       :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }"
     >
-      <button class="dropdown-item" @click="rename(contextMenu.note.id)">
+      <button class="dropdown-item" @click="startRename(contextMenu.note)">
         <i class="bi bi-pencil me-2"></i> Yeniden Adlandır
       </button>
       <button class="dropdown-item text-danger" @click="deleteNote(contextMenu.note.id)">
@@ -80,7 +95,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 
 const props = defineProps({
   currentNotebookName: { type: String, required: true },
@@ -95,6 +110,23 @@ function toggleNotebook() {
   notebookCollapsed.value = !notebookCollapsed.value
 }
 
+/* Inline rename state */
+const rename = ref({ id: null, name: '' })
+const renameInput = ref(null)
+
+function startRename(note){
+  closeContextMenu()
+  rename.value = { id: note.id, name: note.name || '' }
+  nextTick(() => renameInput.value?.focus())
+}
+function commitRename(){
+  if (!rename.value.id) return
+  const newName = (rename.value.name || '').trim()
+  emit('rename-note', rename.value.id, newName)   // App.vue’de ikinci argüman varsa prompt açmadan kaydedilecek
+  rename.value = { id:null, name:'' }
+}
+function cancelRename(){ rename.value = { id:null, name:'' } }
+
 /* Context Menu */
 const contextMenu = ref({ visible: false, x: 0, y: 0, note: null })
 function openContextMenu(e, note) {
@@ -102,7 +134,6 @@ function openContextMenu(e, note) {
 }
 function closeContextMenu() { contextMenu.value.visible = false }
 function deleteNote(id) { emit('delete-note', id); closeContextMenu() }
-function rename(id) { emit('rename-note', id); closeContextMenu() }
 
 onMounted(() => document.addEventListener('click', closeContextMenu))
 onBeforeUnmount(() => document.removeEventListener('click', closeContextMenu))
@@ -114,6 +145,8 @@ onBeforeUnmount(() => document.removeEventListener('click', closeContextMenu))
 .note-item.is-active { background:#fff; border:1px solid #e9ecef; box-shadow: 0 2px 10px rgba(0,0,0,.04); }
 .note-item .label { font-size: .95rem; }
 .color-bar { display:inline-block; width:6px; height:16px; border-radius:2px; }
+
+.inline-rename{ height:28px; font-size:.95rem; padding:.15rem .4rem; }
 
 .text-purple { color: #6f42c1; }
 .text-purple:hover { color: #5a32a3; }
