@@ -50,13 +50,14 @@ import MiddlePane from './components/MiddlePane.vue'
 import EditorPane from './components/EditorPane.vue'
 import Search     from './components/Search.vue'
 
+
 /* ---------- STATE ---------- */
 const isLeftCollapsed = ref(false)
 
-const notebooks = ref([{ id: 'nb-1', name: 'Stajyer @ Çalışma' }])
+const notebooks = ref([{ id: 'nb-1', name: 'Stajyer' }])
 const notes = ref([
   { id: 'n-1', notebookId: 'nb-1', name: 'Yeni Bölüm 1', color: '#f1c40f' },
-  { id: 'n-2', notebookId: 'nb-1', name: 'Yeni Bölüm 2', color: '#1e8e3e' }
+  //{ id: 'n-2', notebookId: 'nb-1', name: 'Yeni Bölüm 2', color: '#1e8e3e' }
 ])
 
 // Sayfalar

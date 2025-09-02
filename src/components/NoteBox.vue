@@ -8,7 +8,7 @@
     <!-- ÜST BAR (drag) -->
     <div class="box-header px-2">
       <div class="drag-handle" title="Taşı" @mousedown.stop="startDrag">
-        <i class="bi bi-arrows-move"></i>
+        <!-- <i class="bi bi-arrows-move"></i> -->
       </div>
     </div>
 
@@ -181,7 +181,7 @@ const fonts = ['Calibri',
   'Times New Roman',
   'Consolas',
   'Courier New']
-const fontSizesPx = [11,12,14,16,18,24]
+const fontSizesPx = [11,12,14,16,18,24,26,28]
 const fontFamily = ref(fonts[0])
 const fontSizePx = ref(14)
 const textColors = ['#000000','#343a40','#0d6efd','#198754','#dc3545','#fd7e14','#6f42c1']
@@ -300,6 +300,7 @@ function startDrag(e){
   drag.value = { active:true, sx:e.clientX, sy:e.clientY, ox:props.x, oy:props.y }
   window.addEventListener('mousemove', onDrag)
   window.addEventListener('mouseup', endDrag)
+  document.body.classList.add('nb-dragging')
 }
 function onDrag(e){
   if (!drag.value.active) return
@@ -313,6 +314,7 @@ function endDrag(){
   window.removeEventListener('mousemove', onDrag)
   window.removeEventListener('mouseup', endDrag)
   drag.value.active = false
+  document.body.classList.remove('nb-dragging')
 }
 
 /* RESIZE */
@@ -351,7 +353,7 @@ function bringToFront(){ emit('update:z', { id: props.id }) }
 /* Drag bar */
 .drag-handle{ position:absolute; top:6px; left:50%; transform:translateX(-50%); display:flex; align-items:center; justify-content:center; height:18px; min-width:44px; padding:0 10px; border-radius:9999px; background:linear-gradient(180deg,#f1f3f5,#e9ecef); border:1px solid #dee2e6; box-shadow:0 1px 2px rgba(0,0,0,.04) inset; cursor:grab; user-select:none; }
 .drag-handle:active{ cursor:grabbing; }
-.drag-handle i{ font-size:14px; color:#6c757d; opacity:.9; }
+.drag-handle, .drag-handle:active { cursor: move !important; }
 
 /* İç alan: kutu yüksekliği - header */
 .note-body{ height:calc(100% - 28px); overflow:auto; }
@@ -387,4 +389,7 @@ function bringToFront(){ emit('update:z', { id: props.id }) }
 <!-- Not odaktayken dış caret-ghost’u gizle -->
 <style>
 body.note-focused .caret-ghost{ display:none !important; }
+body.nb-dragging,
+body.nb-dragging * { cursor: move !important; }
+
 </style>

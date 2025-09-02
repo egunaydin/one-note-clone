@@ -1,4 +1,4 @@
-<template>
+<template> 
   <div v-if="open" class="search-overlay" @click.self="$emit('close')">
     <div class="search-panel shadow-lg">
       <!-- Header -->
@@ -16,7 +16,7 @@
       </div>
 
       <div class="px-3 pt-2 text-muted small">
-        <div v-if="!q">İpucu: "tırnak" tam ifade; birden fazla kelime AND olarak eşleşir.</div>
+        <div v-if="!q"></div>
         <div v-else-if="totalCount===0">Sonuç bulunamadı.</div>
         <div v-else>{{ totalCount }} sonuç ({{ grouped.length }} sayfa, {{ sectionResults.length }} bölüm).</div>
       </div>
@@ -53,7 +53,7 @@
           </div>
 
           <div class="list-group list-group-flush">
-            <!-- Sayfa başlığı -->
+            <!-- Başlık -->
             <button
               v-if="g.titleHit"
               class="list-group-item list-group-item-action"
@@ -66,7 +66,35 @@
               <div class="mt-1 small text-secondary" v-html="g.titleHit.snippet"></div>
             </button>
 
-            <!-- Not içerikleri (SADECE İÇERİK) -->
+            <!-- TARİH -->
+            <button
+              v-for="r in g.dateHits"
+              :key="'date-'+r.id+'-'+r.matchAt"
+              class="list-group-item list-group-item-action"
+              @click="openTitle(g.pageId)"
+            >
+              <div class="d-flex justify-content-between align-items-center">
+                <div class="fw-semibold"><i class="bi bi-calendar3 me-1"></i> Tarihte eşleşme</div>
+                <span class="badge bg-success-subtle text-success">tarih</span>
+              </div>
+              <div class="mt-1 small text-secondary" v-html="r.snippet"></div>
+            </button>
+
+            <!-- SAAT -->
+            <button
+              v-for="r in g.timeHits"
+              :key="'time-'+r.id+'-'+r.matchAt"
+              class="list-group-item list-group-item-action"
+              @click="openTitle(g.pageId)"
+            >
+              <div class="d-flex justify-content-between align-items-center">
+                <div class="fw-semibold"><i class="bi bi-clock me-1"></i> Saatte eşleşme</div>
+                <span class="badge bg-info-subtle text-info">saat</span>
+              </div>
+              <div class="mt-1 small text-secondary" v-html="r.snippet"></div>
+            </button>
+
+            <!-- Not içerikleri -->
             <button
               v-for="r in g.bodyHits"
               :key="'body-'+r.id+'-'+r.matchAt"
@@ -91,15 +119,14 @@ import { computed, nextTick, ref, watch } from 'vue'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
-  // App.vue'den noteName eklenmiş gelmeli
-  pages: { type: Array, default: () => [] }, // [{id,noteId,noteName?,title,blocks?,content?}]
+  pages: { type: Array, default: () => [] }, // [{id,noteId,noteName?,title,dateISO?,timeHM?,blocks?,content?}]
   currentPageId: { type: String, default: '' }
 })
 const emit = defineEmits(['close','open-locate'])
 
 const inputEl = ref(null)
 const q = ref('')
-const placeholder = 'Tüm sayfalarda ara… (ör: "hedef tarih", toplantı notu)'
+const placeholder = 'Tüm sayfalarda ara…'
 
 watch(() => props.open, async v => {
   if (v) { await nextTick(); inputEl.value?.focus() } else { q.value = '' }
@@ -119,12 +146,29 @@ function extractBlocks(page){
   return blocks
 }
 
+/* --- Tarih/Saat alias üreticiler --- */
+function toDateSafe(iso=''){
+  // YYYY-MM-DD bekliyoruz; geçersizse null
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null
+  const d = new Date(`${iso}T00:00:00`)
+  return isNaN(d.getTime()) ? null : d
+}
+function ddmmyyyyDots(iso=''){
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!m) return ''
+  return `${m[3]}.${m[2]}.${m[1]}`
+}
+function ddmmyyyySlashes(iso=''){
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!m) return ''
+  return `${m[3]}/${m[2]}/${m[1]}`
+}
+
 /* --- Bölüm (note) listesi (unique) --- */
 const sections = computed(() => {
   const map = new Map()
   for (const p of props.pages || []) {
     if (p.noteId && (p.noteName || p.noteName === '')) {
-      // son görülen isim yeterli
       if (!map.has(p.noteId)) map.set(p.noteId, String(p.noteName || 'Adsız bölüm'))
     }
   }
@@ -177,7 +221,7 @@ const sectionResults = computed(() => {
   return hits
 })
 
-/* Sayfa içeriği + başlık araması (NOT ADI KALDIRILDI) */
+/* Sayfa içeriği + başlık + TARİH/SAAT araması */
 const index = computed(() => {
   const items = []
   for (const p of props.pages || []) {
@@ -185,12 +229,44 @@ const index = computed(() => {
     const pageTitle = String(p.title || '')
     const sectionName = String(p.noteName || '')
 
+    // Başlık
     items.push({
       kind:'pageTitle', pageId, id:'TITLE',
       raw: pageTitle, norm: normalizeTr(pageTitle),
       pageTitle, sectionName
     })
 
+    // TARİH aliasları
+    const iso = String(p.dateISO || '')
+    if (iso) {
+      const d = toDateSafe(iso)
+      const longTr = d ? d.toLocaleDateString('tr-TR', {day:'2-digit',month:'long',year:'numeric',weekday:'long'}) : ''
+      const dot = ddmmyyyyDots(iso)
+      const slash = ddmmyyyySlashes(iso)
+      const dateAliases = [iso, longTr, dot, slash].filter(Boolean)
+      for (const raw of dateAliases) {
+        items.push({
+          kind:'date', pageId, id:'DATE',
+          raw, norm: normalizeTr(raw),
+          pageTitle, sectionName
+        })
+      }
+    }
+
+    // SAAT aliasları
+    const hm = String(p.timeHM || '')
+    if (hm) {
+      const timeAliases = [hm, hm.replace(':','.')].filter(Boolean)
+      for (const raw of timeAliases) {
+        items.push({
+          kind:'time', pageId, id:'TIME',
+          raw, norm: normalizeTr(raw),
+          pageTitle, sectionName
+        })
+      }
+    }
+
+    // Not içerikleri
     const blocks = extractBlocks(p)
     for (const b of blocks) {
       const bodyRaw = stripHtml(typeof b.html==='string' ? b.html : (typeof b.text==='string' ? b.text : ''))
@@ -221,7 +297,8 @@ const flatResults = computed(() => {
       }
     }
   }
-  const typeRank = { pageTitle:0, noteBody:1 }
+  // Sıralama: Başlık > Tarih > Saat > İçerik
+  const typeRank = { pageTitle:0, date:1, time:2, noteBody:3 }
   hits.sort((a,b)=>{
     const tr = (typeRank[a.kind]??9) - (typeRank[b.kind]??9)
     if (tr) return tr
@@ -236,10 +313,12 @@ const grouped = computed(() => {
   for (const h of flatResults.value) {
     if (!by.has(h.pageId)) by.set(h.pageId, {
       pageId:h.pageId, pageTitle:h.pageTitle, sectionName:h.sectionName || '',
-      titleHit:null, bodyHits:[]
+      titleHit:null, dateHits:[], timeHits:[], bodyHits:[]
     })
     const g = by.get(h.pageId)
     if (h.kind==='pageTitle') g.titleHit = h
+    else if (h.kind==='date') g.dateHits.push(h)
+    else if (h.kind==='time') g.timeHits.push(h)
     else g.bodyHits.push(h)
   }
   return Array.from(by.values())
@@ -254,6 +333,8 @@ function openFirst(){
   if (sectionResults.value[0]) { openSection(sectionResults.value[0].noteId); return }
   const g = grouped.value[0]; if (!g) return
   if (g.titleHit) openTitle(g.pageId)
+  else if (g.dateHits[0]) openTitle(g.pageId)
+  else if (g.timeHits[0]) openTitle(g.pageId)
   else if (g.bodyHits[0]) openNote(g.pageId, g.bodyHits[0].id)
 }
 function openTitle(pageId){
