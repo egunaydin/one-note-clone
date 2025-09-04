@@ -112,7 +112,7 @@
 <script setup>
 import { computed, nextTick, onMounted, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import Search  from './Search.vue'
-import NoteBox from './Notebox.vue' 
+import NoteBox from './NoteBox.vue'
 
 const props = defineProps({
   page:  { type: Object, default: null },
