@@ -1,6 +1,7 @@
 <template>
   <div class="layout" :class="{ collapsed: isLeftCollapsed }">
     <!-- SOL -->
+     
     <LeftPane
       :current-notebook-name="currentNotebookName"
       :notes="notes"
