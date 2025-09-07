@@ -1,9 +1,7 @@
 <template>
   <div class="layout" :class="{ collapsed: isLeftCollapsed }">
-    <!-- SOL -->
-     
     <LeftPane
-      :current-notebook-name="currentNotebookName"
+      current-notebook-name="Logiesse OneNote"
       :notes="notes"
       :selected-note-id="selectedNoteId"
       :is-left-collapsed="isLeftCollapsed"
@@ -14,7 +12,6 @@
       @rename-note="renameNote"
     />
 
-    <!-- ORTA -->
     <MiddlePane
       :pages="pagesForNote"
       :selected-page-id="selectedPageId"
@@ -24,7 +21,6 @@
       @delete-page="deletePage"
     />
 
-    <!-- SAĞ -->
     <EditorPane
       :key="selectedPageId"
       :page="currentPage"
@@ -33,7 +29,6 @@
       @open-page="onSearchLocate"
     />
 
-    <!-- GLOBAL SEARCH OVERLAY -->
     <Search
       :open="searchOpen"
       :pages="allPagesWithNoteName"
@@ -51,17 +46,13 @@ import MiddlePane from './components/MiddlePane.vue'
 import EditorPane from './components/EditorPane.vue'
 import Search     from './components/Search.vue'
 
-
-/* ---------- STATE ---------- */
 const isLeftCollapsed = ref(false)
 
 const notebooks = ref([{ id: 'nb-1', name: 'Stajyer' }])
 const notes = ref([
-  { id: 'n-1', notebookId: 'nb-1', name: 'Yeni Bölüm 1', color: '#f1c40f' },
-  //{ id: 'n-2', notebookId: 'nb-1', name: 'Yeni Bölüm 2', color: '#1e8e3e' }
+  { id: 'n-1', notebookId: 'nb-1', name: 'Yeni Bölüm 1', color: '#f1c40f' }
 ])
 
-// Sayfalar
 const pages = ref([
   { id: 'p-1', noteId: 'n-1', title: 'İlk Sayfa', blocks: [] }
 ])
@@ -70,20 +61,12 @@ const selectedNotebookId = ref('nb-1')
 const selectedNoteId     = ref(notes.value[0]?.id || null)
 const selectedPageId     = ref(pages.value[0]?.id || null)
 
-/* ---------- COMPUTED ---------- */
-const currentNotebookName = computed(() =>
-  notebooks.value.find(n => n.id === selectedNotebookId.value)?.name || 'Defter'
-)
-
 const pagesForNote = computed(() =>
   pages.value.filter(p => p.noteId === selectedNoteId.value)
 )
-
 const currentPage = computed(() =>
   pages.value.find(p => p.id === selectedPageId.value) || null
 )
-
-/* Bölüm adı (noteName) → Search için sayfalara iliştir */
 const noteIdToName = computed(() =>
   Object.fromEntries(notes.value.map(n => [n.id, n.name]))
 )
@@ -91,7 +74,6 @@ const allPagesWithNoteName = computed(() =>
   pages.value.map(p => ({ ...p, noteName: noteIdToName.value[p.noteId] || '' }))
 )
 
-/* ---------- ACTIONS ---------- */
 function toggleLeft () { isLeftCollapsed.value = !isLeftCollapsed.value }
 
 function addNote () {
@@ -100,12 +82,10 @@ function addNote () {
   selectedNoteId.value = id
   selectedPageId.value = pages.value.find(p => p.noteId === id)?.id || null
 }
-
 function selectNote (id) {
   selectedNoteId.value = id
   selectedPageId.value = pages.value.find(p => p.noteId === id)?.id || null
 }
-
 function deleteNote (id) {
   const removedPageIds = new Set(pages.value.filter(p => p.noteId === id).map(p => p.id))
   pages.value = pages.value.filter(p => p.noteId !== id)
@@ -120,7 +100,6 @@ function deleteNote (id) {
     selectedPageId.value = pages.value.find(p => p.noteId === selectedNoteId.value)?.id || null
   }
 }
-
 function renameNote (id, newName) {
   const note = notes.value.find(n => n.id === id)
   if (!note) return
@@ -128,12 +107,10 @@ function renameNote (id, newName) {
     note.name = newName || 'Adsız bölüm'
     return
   }
-  // (opsiyonel eski davranış)
   const yeni = prompt('Yeni isim:', note.name)
   if (yeni !== null) note.name = (yeni || '').trim() || 'Adsız bölüm'
 }
 
-/* Pages */
 function addPage () {
   if (!selectedNoteId.value) return
   const id = 'p-' + Date.now()
@@ -143,34 +120,21 @@ function addPage () {
 function selectPage (id) { selectedPageId.value = id }
 
 function sortPages (type) {
-  // tarih+saati timestamp'e çevir
   const ts = (p) => {
     const d = (p?.dateISO || '').trim()
     const t = (p?.timeHM  || '00:00').trim()
     const v = d ? Date.parse(`${d}T${t}:00`) : NaN
     return Number.isFinite(v) ? v : -Infinity
   }
-
-  if (type === 'alpha') {
-    pages.value = [...pages.value].sort((a, b) => (a.title || '').localeCompare((b.title || ''), 'tr'))
-    return
-  }
-  if (type === 'date-new') { // yeni → eski
-    pages.value = [...pages.value].sort((a, b) => ts(b) - ts(a))
-    return
-  }
-  if (type === 'date-old') { // eski → yeni
-    pages.value = [...pages.value].sort((a, b) => ts(a) - ts(b))
-    return
-  }
-  // 'none' → dokunma
+  if (type === 'alpha') { pages.value = [...pages.value].sort((a, b) => (a.title || '').localeCompare((b.title || ''), 'tr')); return }
+  if (type === 'date-new') { pages.value = [...pages.value].sort((a, b) => ts(b) - ts(a)); return }
+  if (type === 'date-old') { pages.value = [...pages.value].sort((a, b) => ts(a) - ts(b)); return }
 }
 
 function onUpdatePage (updated) {
   const page = pages.value.find(p => p.id === updated.id)
-  if (page) Object.assign(page, updated) // referans koru
+  if (page) Object.assign(page, updated)
 }
-
 function deletePage (id) {
   const page = pages.value.find(p => p.id === id)
   if (!page) return
@@ -180,7 +144,6 @@ function deletePage (id) {
   }
 }
 
-/* ---------- PERSIST (localStorage) ---------- */
 const STORAGE_KEY = 'one-note-notebook-v1'
 const safeParse = (json, fb) => { try { return JSON.parse(json) ?? fb } catch { return fb } }
 const migratePage = (p) => ({ ...p, blocks: Array.isArray(p.blocks) ? p.blocks : (p.notes ?? []) })
@@ -198,7 +161,6 @@ function hydrateFromStorage () {
   selectedPageId.value     = saved.selectedPageId     ?? selectedPageId.value
   isLeftCollapsed.value    = saved.isLeftCollapsed    ?? isLeftCollapsed.value
 
-  // seçimleri doğrula
   if (!notes.value.find(n => n.id === selectedNoteId.value)) {
     selectedNoteId.value = notes.value[0]?.id || null
   }
@@ -226,7 +188,6 @@ watch(() => snapshot(), (st) => {
   }, 150)
 }, { deep: true })
 
-// Sekmeler arası senkron
 window.addEventListener('storage', (e) => {
   if (e.key !== STORAGE_KEY || !e.newValue) return
   const next = safeParse(e.newValue, null); if (!next) return
@@ -248,36 +209,17 @@ window.addEventListener('storage', (e) => {
   }
 })
 
-/* ---------- SEARCH: kısayol + global event ---------- */
 const searchOpen = ref(false)
-function onGlobalKey (e) {
-  if ((e.ctrlKey||e.metaKey) && (e.key||'').toLowerCase()==='k'){
-    e.preventDefault()
-    searchOpen.value = true
-  }
-}
-onMounted(() => {
-  window.addEventListener('keydown', onGlobalKey)
-  // Search.vue her nerede olursa olsun tıklama garanti gelsin
-  window.addEventListener('oneNote:openLocate', handleGlobalOpenLocate)
-})
-onBeforeUnmount(() => {
-  window.removeEventListener('keydown', onGlobalKey)
-  window.removeEventListener('oneNote:openLocate', handleGlobalOpenLocate)
-})
 
 function handleGlobalOpenLocate (e) {
   const { pageId, noteId } = e.detail || {}
   if (pageId || noteId) onSearchLocate({ pageId, noteId })
 }
 
-/* Search/EditorPane → sayfayı ya da doğrudan bölümü aç (TEK versiyon) */
-const highlightNoteId = ref('') // istersen EditorPane'e iletebilirsin
-
+const highlightNoteId = ref('')
 async function onSearchLocate (payload = {}) {
   const { pageId, noteId } = payload
 
-  // 1) Belirli bir sayfa
   if (pageId) {
     const page = pages.value.find(p => p.id === pageId)
     if (!page) return
@@ -288,8 +230,6 @@ async function onSearchLocate (payload = {}) {
     searchOpen.value = false
     return
   }
-
-  // 2) Sadece bölüm
   if (noteId) {
     selectedNoteId.value = noteId
     await nextTick()
@@ -298,27 +238,61 @@ async function onSearchLocate (payload = {}) {
     searchOpen.value = false
   }
 }
+
+function onGlobalKey (e) {
+  const k = (e.key || '').toLowerCase()
+  if ((e.ctrlKey || e.metaKey) && k === 'k') {
+    e.preventDefault()
+    e.stopPropagation()             
+    e.stopImmediatePropagation?.()
+    if (e.repeat) return
+    if (!searchOpen.value) searchOpen.value = true
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', onGlobalKey, true) 
+  window.addEventListener('oneNote:openLocate', handleGlobalOpenLocate)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onGlobalKey, true)
+  window.removeEventListener('oneNote:openLocate', handleGlobalOpenLocate)
+})
 </script>
 
 <style>
-.layout {
-  height: 100vh;
-  display: grid;
-  grid-template-columns: 260px 280px 1fr; /* SOL - ORTA - SAĞ */
-  grid-template-rows: auto 1fr;
-  transition: grid-template-columns .2s ease;
-}
-.app-header { grid-column: 1 / -1; }
-
-.layout.collapsed {
-  grid-template-columns: 48px 280px 1fr;
-}
-
-/* Sadece EditorPane scroll alsın */
 html, body, #app { height: 100%; }
 body { overflow: hidden; }
 
-/* Grid konteyneri taşmasın; çocuklar içeride scroll etsin */
-.layout { height: 100vh; overflow: hidden; }
+.layout {
+  height: 100%;
+  display: grid;
+  grid-template-columns: 260px 280px 1fr; 
+  grid-template-rows: 1fr;               
+  overflow: hidden;                     
+  transition: grid-template-columns .2s ease;
+}
+.layout.collapsed { grid-template-columns: 48px 280px 1fr; }
+
 .layout > * { min-height: 0; }
+
+.left-pane,
+.middle-pane,
+.editor-root {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.aside-body,                      
+.middle-pane > .list-group,      
+.editor-root .editor-canvas {     
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.search-overlay { overscroll-behavior: contain; }
 </style>

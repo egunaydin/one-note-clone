@@ -115,11 +115,11 @@
 </template>
 
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch, onMounted, onBeforeUnmount } from 'vue'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
-  pages: { type: Array, default: () => [] }, // [{id,noteId,noteName?,title,dateISO?,timeHM?,blocks?,content?}]
+  pages: { type: Array, default: () => [] },
   currentPageId: { type: String, default: '' }
 })
 const emit = defineEmits(['close','open-locate'])
@@ -132,11 +132,32 @@ watch(() => props.open, async v => {
   if (v) { await nextTick(); inputEl.value?.focus() } else { q.value = '' }
 })
 
-/* Helpers */
+/* ---- ÇİFT TETİK ÖNLEYİCİ: Panel açıkken Ctrl/Cmd+K ve ESC = KAPAT ---- */
+function hotkeysWhenOpen(e){
+  if (!props.open) return
+  const key = (e.key || '').toLowerCase()
+
+  // Ctrl/Cmd + K -> kapat
+  if ((e.ctrlKey || e.metaKey) && key === 'k'){
+    e.preventDefault()
+    e.stopImmediatePropagation()
+    emit('close')
+    return
+  }
+  // Escape -> kapat
+  if (key === 'escape'){
+    e.preventDefault()
+    e.stopImmediatePropagation()
+    emit('close')
+  }
+}
+onMounted(() => document.addEventListener('keydown', hotkeysWhenOpen, true))   // capture
+onBeforeUnmount(() => document.removeEventListener('keydown', hotkeysWhenOpen, true))
+
+/* ----------------- (devamı aynı) yardımcılar & arama mantığı ----------------- */
 const escHtml = (s='') => s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))
 function stripHtml(html=''){ const d=document.createElement('div'); d.innerHTML=html; return d.textContent||d.innerText||'' }
 function normalizeTr(str=''){ return str.toLowerCase('tr-TR').replace(/\s+/g,' ').trim() }
-function firstMeaningfulLine(txt=''){ const line=(txt.split('\n').find(x=>x.trim().length)||'').trim(); return line.slice(0,80) }
 function extractBlocks(page){
   let blocks = []
   if (Array.isArray(page.blocks)) blocks = page.blocks
@@ -145,26 +166,10 @@ function extractBlocks(page){
   }
   return blocks
 }
+function toDateSafe(iso=''){ if(!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null; const d=new Date(`${iso}T00:00:00`); return isNaN(d.getTime())?null:d }
+function ddmmyyyyDots(iso=''){ const m=iso.match(/^(\d{4})-(\d{2})-(\d{2})$/); return m?`${m[3]}.${m[2]}.${m[1]}`:'' }
+function ddmmyyyySlashes(iso=''){ const m=iso.match(/^(\d{4})-(\d{2})-(\d{2})$/); return m?`${m[3]}/${m[2]}/${m[1]}`:'' }
 
-/* --- Tarih/Saat alias üreticiler --- */
-function toDateSafe(iso=''){
-  // YYYY-MM-DD bekliyoruz; geçersizse null
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null
-  const d = new Date(`${iso}T00:00:00`)
-  return isNaN(d.getTime()) ? null : d
-}
-function ddmmyyyyDots(iso=''){
-  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/)
-  if (!m) return ''
-  return `${m[3]}.${m[2]}.${m[1]}`
-}
-function ddmmyyyySlashes(iso=''){
-  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/)
-  if (!m) return ''
-  return `${m[3]}/${m[2]}/${m[1]}`
-}
-
-/* --- Bölüm (note) listesi (unique) --- */
 const sections = computed(() => {
   const map = new Map()
   for (const p of props.pages || []) {
@@ -175,7 +180,6 @@ const sections = computed(() => {
   return Array.from(map, ([noteId, sectionName]) => ({ noteId, sectionName }))
 })
 
-/* Sorgu çözümlemesi */
 function parseQuery(s=''){
   s = s.trim()
   if (!s) return { type:'empty' }
@@ -184,8 +188,6 @@ function parseQuery(s=''){
   const terms = normalizeTr(s).split(' ').filter(Boolean)
   return terms.length ? { type:'and', terms } : { type:'empty' }
 }
-
-/* Snippet */
 function buildSnippet(raw, norm, at, len, pad=42){
   const safe = escHtml(raw)
   const start = Math.max(0, at - pad)
@@ -197,7 +199,6 @@ function buildSnippet(raw, norm, at, len, pad=42){
   return `${start>0?'…':''}${before}<mark>${mid}</mark>${after}${end<safe.length?'…':''}`
 }
 
-/* Bölüm adı arama sonuçları */
 const sectionResults = computed(() => {
   const p = parseQuery(q.value)
   if (p.type === 'empty') return []
@@ -221,7 +222,6 @@ const sectionResults = computed(() => {
   return hits
 })
 
-/* Sayfa içeriği + başlık + TARİH/SAAT araması */
 const index = computed(() => {
   const items = []
   for (const p of props.pages || []) {
@@ -229,50 +229,27 @@ const index = computed(() => {
     const pageTitle = String(p.title || '')
     const sectionName = String(p.noteName || '')
 
-    // Başlık
-    items.push({
-      kind:'pageTitle', pageId, id:'TITLE',
-      raw: pageTitle, norm: normalizeTr(pageTitle),
-      pageTitle, sectionName
-    })
+    items.push({ kind:'pageTitle', pageId, id:'TITLE', raw:pageTitle, norm:normalizeTr(pageTitle), pageTitle, sectionName })
 
-    // TARİH aliasları
     const iso = String(p.dateISO || '')
     if (iso) {
       const d = toDateSafe(iso)
       const longTr = d ? d.toLocaleDateString('tr-TR', {day:'2-digit',month:'long',year:'numeric',weekday:'long'}) : ''
-      const dot = ddmmyyyyDots(iso)
-      const slash = ddmmyyyySlashes(iso)
-      const dateAliases = [iso, longTr, dot, slash].filter(Boolean)
-      for (const raw of dateAliases) {
-        items.push({
-          kind:'date', pageId, id:'DATE',
-          raw, norm: normalizeTr(raw),
-          pageTitle, sectionName
-        })
+      for (const raw of [iso, longTr, ddmmyyyyDots(iso), ddmmyyyySlashes(iso)].filter(Boolean)){
+        items.push({ kind:'date', pageId, id:'DATE', raw, norm:normalizeTr(raw), pageTitle, sectionName })
       }
     }
 
-    // SAAT aliasları
     const hm = String(p.timeHM || '')
     if (hm) {
-      const timeAliases = [hm, hm.replace(':','.')].filter(Boolean)
-      for (const raw of timeAliases) {
-        items.push({
-          kind:'time', pageId, id:'TIME',
-          raw, norm: normalizeTr(raw),
-          pageTitle, sectionName
-        })
+      for (const raw of [hm, hm.replace(':','.')]){
+        items.push({ kind:'time', pageId, id:'TIME', raw, norm:normalizeTr(raw), pageTitle, sectionName })
       }
     }
 
-    // Not içerikleri
-    const blocks = extractBlocks(p)
-    for (const b of blocks) {
+    for (const b of extractBlocks(p)) {
       const bodyRaw = stripHtml(typeof b.html==='string' ? b.html : (typeof b.text==='string' ? b.text : ''))
-      items.push({
-        kind:'noteBody', pageId, id:b.id, raw:bodyRaw, norm: normalizeTr(bodyRaw), pageTitle, sectionName
-      })
+      items.push({ kind:'noteBody', pageId, id:b.id, raw:bodyRaw, norm:normalizeTr(bodyRaw), pageTitle, sectionName })
     }
   }
   return items
@@ -297,7 +274,6 @@ const flatResults = computed(() => {
       }
     }
   }
-  // Sıralama: Başlık > Tarih > Saat > İçerik
   const typeRank = { pageTitle:0, date:1, time:2, noteBody:3 }
   hits.sort((a,b)=>{
     const tr = (typeRank[a.kind]??9) - (typeRank[b.kind]??9)

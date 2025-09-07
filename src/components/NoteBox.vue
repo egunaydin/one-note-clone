@@ -5,14 +5,11 @@
     :data-id="id"
     @mousedown="bringToFront"
   >
-    <!-- ÜST BAR (drag) -->
     <div class="box-header px-2">
       <div class="drag-handle" title="Taşı" @mousedown.stop="startDrag">
-        <!-- <i class="bi bi-arrows-move"></i> -->
       </div>
     </div>
 
-    <!-- İÇERİK (scroll bu sarmalayıcıda) -->
     <div class="note-body p-3">
       <div
         ref="editorEl"
@@ -33,10 +30,8 @@
       ></div>
     </div>
 
-    <!-- Sağ-alt köşe – yeniden boyutlandırma -->
     <div class="resizer" @mousedown.stop="startResize" title="Yeniden boyutlandır"></div>
 
-    <!-- SAĞ TIK MENÜ -->
     <teleport to="body">
       <div
         v-if="menu.show"
@@ -49,19 +44,16 @@
         <div class="card-body py-2">
           <div class="d-flex align-items-center flex-wrap gap-2">
 
-            <!-- Yazı tipi -->
             <select class="form-select form-select-sm" style="width:auto" :disabled="locked"
                     v-model="fontFamily" @change="applyFontFamily">
               <option v-for="f in fonts" :key="f" :value="f">{{ f }}</option>
             </select>
 
-            <!-- Yazı boyutu -->
             <select class="form-select form-select-sm" style="width:72px" :disabled="locked"
                     v-model.number="fontSizePx" @change="applyFontSize">
               <option v-for="s in fontSizesPx" :key="s" :value="s">{{ s }}</option>
             </select>
 
-            <!-- Kalın / İtalik / Altı çizili -->
             <div class="btn-group">
               <button class="btn btn-sm btn-light" :disabled="locked" title="Kalın" @click="exec('bold')">
                 <i class="bi bi-type-bold"></i>
@@ -74,7 +66,6 @@
               </button>
             </div>
 
-            <!-- Yazı rengi -->
             <div class="dropdown">
               <button class="btn btn-sm btn-light dropdown-toggle" data-bs-toggle="dropdown"
                       :disabled="locked" title="Yazı rengi">
@@ -91,7 +82,6 @@
               </div>
             </div>
 
-            <!-- Metin vurgusu (Beyaz = iptal) -->
             <div class="dropdown">
               <button class="btn btn-sm btn-light dropdown-toggle" data-bs-toggle="dropdown"
                       :disabled="locked" title="Metin vurgusu">
@@ -108,13 +98,11 @@
               </div>
             </div>
 
-            <!-- Madde işaretli liste -->
             <button class="btn btn-sm btn-light" :disabled="locked" title="Madde işaretli liste"
                     @click="exec('insertUnorderedList')">
               <i class="bi bi-list-ul"></i>
             </button>
 
-            <!-- Numaralı liste + stil -->
             <div class="btn-group">
               <button class="btn btn-sm btn-light" :disabled="locked" title="Numaralı liste"
                       @click="toggleOrderedList">
@@ -133,7 +121,6 @@
               </ul>
             </div>
 
-            <!-- Kutuyu sil -->
             <button class="btn btn-sm btn-outline-danger" title="Kutuyu sil" @click="$emit('delete', { id })">
               <i class="bi bi-trash"></i>
             </button>
@@ -217,17 +204,24 @@ watch(() => props.html, (v) => {
 function onInput(){ requestAnimationFrame(() => emit('update:content', { id: props.id, html: editorEl.value?.innerHTML || '' })) }
 
 function onKeydown(e){
-  // Shift+Enter: satır içi kırılma
-  if (e.key === 'Enter' && e.shiftKey){ e.preventDefault(); insertHTML('<br>'); return }
-  // Normal Enter: tarayıcıya bırak (yeni paragraf / li)
-  if (e.ctrlKey || e.metaKey){
-    const k = e.key.toLowerCase()
-    if (k==='b'){ e.preventDefault(); exec('bold') }
-    if (k==='i'){ e.preventDefault(); exec('italic') }
-    if (k==='u'){ e.preventDefault(); exec('underline') }
+  if (e.key === 'Enter' && e.shiftKey){
+    e.preventDefault();
+    insertHTML('<br>');
+    return;
   }
-  if (e.key === 'Delete' && !menu.value.show) emit('delete', { id: props.id })
+
+  if (e.ctrlKey || e.metaKey){
+    const k = e.key.toLowerCase();
+    if (k === 'b'){ e.preventDefault(); exec('bold');      return; }
+    if (k === 'i'){ e.preventDefault(); exec('italic');    return; }
+    if (k === 'u'){ e.preventDefault(); exec('underline'); return; }
+  }
+
+  if (e.key === 'Delete'){
+    return;
+  }
 }
+
 
 function onEditorFocus(){ document.body.classList.add('note-focused') }
 function onEditorBlur(){ document.body.classList.remove('note-focused') }
@@ -293,7 +287,6 @@ async function openMenu(e){
 function onDocClick(ev){ if (!ev.target.closest('.rt-menu')) menu.value.show = false }
 function onDocKey(ev){ if (ev.key==='Escape') menu.value.show = false }
 
-/* DRAG */
 function startDrag(e){
   if (e.button!==0) return
   menu.value.show=false
@@ -317,7 +310,6 @@ function endDrag(){
   document.body.classList.remove('nb-dragging')
 }
 
-/* RESIZE */
 function startResize(e){
   menu.value.show=false
   rez.value = { active:true, sx:e.clientX, sy:e.clientY, ow:props.w, oh:props.h }
@@ -343,22 +335,17 @@ function bringToFront(){ emit('update:z', { id: props.id }) }
 </script>
 
 <style scoped>
-/* Kutu taşmasını kes */
 .note-box{ overflow:hidden; box-sizing:border-box; border:1px solid transparent; border-radius:12px; box-shadow:0 1px 2px rgba(0,0,0,.06); transition:box-shadow .15s, border-color .15s; }
 .note-box:hover, .note-box:focus-within{ border-color:#cfd4da; box-shadow:0 8px 24px rgba(33,37,41,.08); }
 
-/* Header */
 .box-header{ position:relative; height:28px; background:linear-gradient(180deg,#f8f9fa,#f1f3f5); border-bottom:1px solid #e9ecef; border-top-left-radius:12px; border-top-right-radius:12px; user-select:none; }
 
-/* Drag bar */
 .drag-handle{ position:absolute; top:6px; left:50%; transform:translateX(-50%); display:flex; align-items:center; justify-content:center; height:18px; min-width:44px; padding:0 10px; border-radius:9999px; background:linear-gradient(180deg,#f1f3f5,#e9ecef); border:1px solid #dee2e6; box-shadow:0 1px 2px rgba(0,0,0,.04) inset; cursor:grab; user-select:none; }
 .drag-handle:active{ cursor:grabbing; }
 .drag-handle, .drag-handle:active { cursor: move !important; }
 
-/* İç alan: kutu yüksekliği - header */
 .note-body{ height:calc(100% - 28px); overflow:auto; }
 
-/* İçerik: metin taşmasını kır, min-height tüm alan */
 .note-content{
   min-height:100%;
   width:100%;
@@ -371,22 +358,18 @@ function bringToFront(){ emit('update:z', { id: props.id }) }
   user-select:text; cursor:text;
 }
 
-/* Sağ-alt köşe – resize */
 .resizer{ position:absolute; right:6px; bottom:6px; width:16px; height:16px; border:none; border-radius:4px;
   background: linear-gradient(135deg, transparent 0 50%, #adb5bd 50% 52%, transparent 52% 100%),
               linear-gradient(135deg, transparent 0 70%, #ced4da 70% 72%, transparent 72% 100%);
   cursor:se-resize; opacity:.7; }
 .note-box:hover .resizer{ opacity:1; }
 
-/* Menü */
 .rt-menu{ position:fixed; min-width:360px; max-width:520px; border-radius:.5rem; z-index:9999; }
 
-/* Renk swatch aktif görünümü */
 .color-swatch.active{ outline:2px solid #0d6efd; outline-offset:1px; }
 .color-swatch i{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:14px; color:#0d6efd; }
 </style>
 
-<!-- Not odaktayken dış caret-ghost’u gizle -->
 <style>
 body.note-focused .caret-ghost{ display:none !important; }
 body.nb-dragging,
