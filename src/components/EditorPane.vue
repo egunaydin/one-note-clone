@@ -600,4 +600,5 @@ function createBlockAt(x, y){
 <style>
 body.note-focused .caret-ghost{ display:none !important; }
 body.nb-dragging, body.nb-dragging * { cursor: move !important; }
-</style>  benim kodum bu sadece gerekli düzeltmeleri ya
+
+</style>  
